@@ -5,20 +5,30 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(custom_msgs REQUIRED) #for custom msgs
+find_package(serial_communicate_cpp REQUIRED)
 
-add_executable(mail_node src/mail_node.cpp)
-ament_target_dependencies(mail_node rclcpp custom_msgs) #custom_msgs!
 
-target_include_directories(mail_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(mail_node PUBLIC c_std_99 cxx_std_17)
+add_executable(from_leonardo src/pub_node.cpp)
+ament_target_dependencies(from_leonardo rclcpp custom_msgs) #custom_msgs!
+
 install(TARGETS 
-	mail_node
+  from_leonardo
+  DESTINATION lib/${PROJECT_NAME})
+  
+add_executable(to_leonardo src/sub_node.cpp)
+ament_target_dependencies(to_leonardo rclcpp custom_msgs)
+
+install(TARGETS
+  #from_leonardo  #someone who publish data for leonardo
+  to_leonardo
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
