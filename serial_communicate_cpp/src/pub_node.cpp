@@ -18,16 +18,16 @@
 
 using namespace std::chrono_literals;
 
-struct termios tty;			//serial configuration struct
+struct termios tty;		//serial configuration struct
 char read_buffer[20];		//char buffer for serial reading bytes
 std::stringstream buf;		//string <--> int convertor thing
-std::string str;			//string buffer for convertor thing
-int num = 0;				//int buffer for convertor things
+std::string str;		//string buffer for convertor thing
+int num = 0;			//int buffer for convertor things
 
 int serial_port = open("/dev/ttyUSB0", O_RDWR);		//open serial port
 
 int16_t lw_spd = 0; 		//left wheel speed
-int16_t rw_spd = 0;			//right wheel speed
+int16_t rw_spd = 0;		//right wheel speed
 int16_t body_angle = 0;		//body angle servo
 int16_t hand_angle = 0;		//hand angle servo
 
