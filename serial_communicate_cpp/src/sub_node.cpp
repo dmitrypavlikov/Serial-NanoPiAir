@@ -19,15 +19,15 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-struct termios tty;			//serial configuration struct
+struct termios tty;		//serial configuration struct
 char send_buffer[20];		//char buffer for serial sending bytes
 std::stringstream buf;		//string <--> int convertor thing
-std::string str;			//string buffer for convertor thing
+std::string str;		//string buffer for convertor thing
 
 int serial_port = open("/dev/ttyUSB0", O_RDWR);		//open serial port
 
 int16_t lw_spd = 0; 		//left wheel speed
-int16_t rw_spd = 0;			//right wheel speed
+int16_t rw_spd = 0;		//right wheel speed
 int16_t body_angle = 0;		//body angle servo
 int16_t hand_angle = 0;		//hand angle servo
 
@@ -59,7 +59,6 @@ void launch_serial(){		//serial configuration things
 	//cfsetspeed(&tty, B9600); // alternative 
 	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
 	printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));}
-	memset(&send_buffer, 'a', sizeof(send_buffer));		//pulling empty space in send_buffer with char 'a'
 }
 
 void sendMail(){	//function for sending mail to DXL_controller
