@@ -1,3 +1,4 @@
+#include <iostream>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -10,22 +11,27 @@
 #include <unistd.h> // write(), read(), close()
 #include <string.h>
 #include <string> 
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "custom_msgs/msg/custom.hpp"
 
 using namespace std::chrono_literals;
 
-struct termios tty;
-char read_buffer[20];
-int serial_port = open("/dev/ttyUSB0", O_RDWR);
+struct termios tty;			//serial configuration struct
+char read_buffer[20];		//char buffer for serial reading bytes
+std::stringstream buf;		//string <--> int convertor thing
+std::string str;			//string buffer for convertor thing
+int num = 0;				//int buffer for convertor things
 
-int16_t lw_spd = 0; 
-int16_t rw_spd = 0;	
-int16_t body_angle = 0;  
-int16_t hand_angle = 0; 
+int serial_port = open("/dev/ttyUSB0", O_RDWR);		//open serial port
 
-void launch_serial(){
+int16_t lw_spd = 0; 		//left wheel speed
+int16_t rw_spd = 0;			//right wheel speed
+int16_t body_angle = 0;		//body angle servo
+int16_t hand_angle = 0;		//hand angle servo
+
+void launch_serial(){		//serial configuration things 
 	if (serial_port < 0) {
     	printf("Error %i from open: %s\n", errno, strerror(errno));}
 	if(tcgetattr(serial_port, &tty) != 0) {
@@ -53,73 +59,74 @@ void launch_serial(){
 	//cfsetspeed(&tty, B9600); // alternative 
 	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
 	printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));}
-	memset(&read_buffer, 'a', sizeof(read_buffer));
+	memset(&read_buffer, 'a', sizeof(read_buffer));		//pulling empty space in read_buffer with char 'a'
 }
 
-void recieveMail(){
-	std::string num;
-	int counter = 0;
-	//Receive UART mail (+XXXX,+XXXX,XXX,XXX.)
+void recieveMail(){		//function for recieve mail from DXL_controller
+	int counter = 0;	//counter for string splitting
+	
+	//Receive serial mail from DXL_controller (+XXXX,+XXXX,XXX,XXX.)
 	int num_bytes = read(serial_port, &read_buffer, sizeof(read_buffer));
 	//Convert mail to int variables
 	for (int i = 0; i < sizeof(read_buffer); i++){
 		if((read_buffer[i] != ',') and (read_buffer[i] != '.') and (read_buffer[i] != 'a')){
-			num += read_buffer[i];}
+			buf << read_buffer[i];}
 		else {
+			buf >> num;
 			switch(counter){
 				case 0:
-					lw_spd = stoi(num);
+					lw_spd = num;
 					break;
 				case 1:
-					rw_spd = stoi(num);
+					rw_spd = num;
 					break;
 				case 2:
-					body_angle = stoi(num);
+					body_angle = num;
 					break;
 			}
 			counter++;
-			num = "";
+			str = "";
 			}
 		}
-	hand_angle = stoi(num);
-} 
+	hand_angle = num;		//pulling last variable
+}
 
-class LeoPublisher : public rclcpp::Node
+class LeoPublisher : public rclcpp::Node	//cpp ros2 pub_node
 {
-  public:
-    LeoPublisher()
-    : Node("from_leonardo")
-    {
-      publisher_ = this->create_publisher<custom_msgs::msg::Custom>("from_leonardo", 10); 
-      timer_ = this->create_wall_timer(
-      500ms, std::bind(&LeoPublisher::timer_callback, this));
-    }
+	public:
+		LeoPublisher()
+		: Node("from_leonardo")
+		{
+			publisher_ = this->create_publisher<custom_msgs::msg::Custom>("from_leonardo", 10); 
+			timer_ = this->create_wall_timer(
+			500ms, std::bind(&LeoPublisher::timer_callback, this));
+		}
+		
 	private:
-  void timer_callback()
-  {
-  	recieveMail();
-    auto message = custom_msgs::msg::Custom();
-	message.lw_spd = lw_spd;
-	message.rw_spd = rw_spd;
-	message.body_angle = body_angle;
-	message.hand_angle = hand_angle;
-    RCLCPP_INFO(this->get_logger(),"Publishing messages");
-    publisher_->publish(message);
-  }
-  rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Publisher<custom_msgs::msg::Custom>::SharedPtr publisher_;
+		void timer_callback()
+		{
+			recieveMail();
+			auto message = custom_msgs::msg::Custom();
+			message.lw_spd = lw_spd;
+			message.rw_spd = rw_spd;
+			message.body_angle = body_angle;
+			message.hand_angle = hand_angle;
+			RCLCPP_INFO(this->get_logger(),"Publishing messages");
+			publisher_->publish(message);
+		}
+	rclcpp::TimerBase::SharedPtr timer_;
+	rclcpp::Publisher<custom_msgs::msg::Custom>::SharedPtr publisher_;
 };
+
 
 
 
 int main(int argc, char * argv[])
 {	
 	launch_serial();  // launch serial communication
-	
 	rclcpp::init(argc, argv);
 	rclcpp::spin(std::make_shared<LeoPublisher>());
 	rclcpp::shutdown();
-
-  return 0;
+ 	return 0;
 }
 
