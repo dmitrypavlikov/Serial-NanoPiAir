@@ -19,19 +19,19 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-struct termios tty;
-char send_buffer[20];
-std::stringstream buf;
-std::string str;
+struct termios tty;			//serial configuration struct
+char send_buffer[20];		//char buffer for serial sending bytes
+std::stringstream buf;		//string <--> int convertor thing
+std::string str;			//string buffer for convertor thing
 
-int serial_port = open("/dev/ttyUSB0", O_RDWR);
+int serial_port = open("/dev/ttyUSB0", O_RDWR);		//open serial port
 
-int16_t lw_spd = 0; 
-int16_t rw_spd = 0;	
-int16_t body_angle = 0;  
-int16_t hand_angle = 0;  
+int16_t lw_spd = 0; 		//left wheel speed
+int16_t rw_spd = 0;			//right wheel speed
+int16_t body_angle = 0;		//body angle servo
+int16_t hand_angle = 0;		//hand angle servo
 
-void launch_serial(){
+void launch_serial(){		//serial configuration things 
 	if (serial_port < 0) {
     	printf("Error %i from open: %s\n", errno, strerror(errno));}
 	if(tcgetattr(serial_port, &tty) != 0) {
@@ -59,42 +59,43 @@ void launch_serial(){
 	//cfsetspeed(&tty, B9600); // alternative 
 	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
 	printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));}
-	memset(&send_buffer, 'a', sizeof(send_buffer));
+	memset(&send_buffer, 'a', sizeof(send_buffer));		//pulling empty space in send_buffer with char 'a'
 }
 
-void sendMail(){
-	//Create mail package "buf" (+XXXX,+XXXX,XXX,XXX.)
+void sendMail(){	//function for sending mail to DXL_controller
+
+	//Creating string mail in str (+XXXX,+XXXX,XXX,XXX.)
 	buf << lw_spd << ',' << rw_spd << ',' << body_angle << ',' << hand_angle << '.';
 	buf >> str;
+	//pulling str to send_buffer
 	for (int i = 0; i < sizeof(send_buffer); i++){
-	send_buffer[i] = str[i];
-	}
-	//Send UART mail to DXL_controller
+	send_buffer[i] = str[i];}
+	//Sending serial mail to DXL_controller
 	write(serial_port, send_buffer, sizeof(send_buffer));
 }
 
 
-class LeoSubscriber : public rclcpp::Node
+class LeoSubscriber : public rclcpp::Node		//cpp ros2 sub_node
 {
-  public:
-    LeoSubscriber()
-    : Node("to_leonardo")
-    {
-      subscription_ = this->create_subscription<custom_msgs::msg::Custom>(
-      "to_leonardo", 10, std::bind(&LeoSubscriber::topic_callback, this, _1));
-    }
-
-  private:
-    void topic_callback(const custom_msgs::msg::Custom & msg) const
-    {
-      RCLCPP_INFO(this->get_logger(), "I heard something");//, msg.lw_spd.c_str());
-      lw_spd = msg.lw_spd;
-      rw_spd = msg.rw_spd;
-      body_angle = msg.body_angle;
-      hand_angle = msg.hand_angle;
-      sendMail();
-    }
-    rclcpp::Subscription<custom_msgs::msg::Custom>::SharedPtr subscription_;
+	public:
+		LeoSubscriber()
+		: Node("to_leonardo")
+		{
+			subscription_ = this->create_subscription<custom_msgs::msg::Custom>(
+			"to_leonardo", 10, std::bind(&LeoSubscriber::topic_callback, this, _1));
+		}
+		
+	private:
+		void topic_callback(const custom_msgs::msg::Custom & msg) const
+		{
+			RCLCPP_INFO(this->get_logger(), "I heard something");
+			lw_spd = msg.lw_spd;
+			rw_spd = msg.rw_spd;
+			body_angle = msg.body_angle;
+			hand_angle = msg.hand_angle;
+			sendMail();		//sending serial mail after reading ros2 topic
+		}
+	rclcpp::Subscription<custom_msgs::msg::Custom>::SharedPtr subscription_;
 };
 
 
@@ -102,11 +103,11 @@ class LeoSubscriber : public rclcpp::Node
 
 int main(int argc, char * argv[])
 {	
-  launch_serial();  // launch serial communication
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<LeoSubscriber>());
-  rclcpp::shutdown();
-  return 0;
+	launch_serial();  // launch serial communication
+ 	rclcpp::init(argc, argv);
+	rclcpp::spin(std::make_shared<LeoSubscriber>());
+	rclcpp::shutdown();
+	return 0;
 }
 
 
