@@ -16,8 +16,12 @@ ros2 run serial_communicate_cpp from_leonardo
 
 
 
-Ноды используют custom_msg:
+Ноды используют custom_msg: 
+
 int16 lw_spd: 0
+
 int16 rw_spd: 0
+
 int16 body_angle: 0
+
 int16 hand_angle: 0
