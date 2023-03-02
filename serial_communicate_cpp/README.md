@@ -3,5 +3,10 @@ git config --global user.email "you@example.com"
 git config --global user.name "Your Name"
   
 
-ros2 run serial_communicate_cpp to_leonardo 
+Команды для запуска нод:
+
+Отправить сообщение на микроконтроолер: 
+ros2 run serial_communicate_cpp to_leonardo
+
+Получить сообщение от микроконтроллера:  
 ros2 run serial_communicate_cpp from_leonardo
